@@ -9,7 +9,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, \Illuminate\Database\Eloquent\Concerns\HasUuids;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'username',

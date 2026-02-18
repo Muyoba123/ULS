@@ -38,21 +38,22 @@ class AuthService
 
     public function login(string $identifier, string $password): array
     {
+        // Rate Limiting
+        $key = 'login_attempts:' . $identifier . ':' . request()->ip();
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($key);
+            throw new Exception("Too many login attempts. Please try again in " . ceil($seconds / 60) . " minutes.");
+        }
+
         $user = $this->userService->findUserByCredentials($identifier);
 
-        if (!$user) {
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+            \Illuminate\Support\Facades\RateLimiter::hit($key, 600); // 10 minutes (600 seconds)
             throw new Exception("Invalid credentials");
         }
 
-        // Verify password - wait, UserService has logic to verify? 
-        // No, UserService has changePassword which checks.
-        // We need to check password here. UserService doesn't expose a checker.
-        // I should use Hash facade here or add a verifyPassword method to UserService.
-        // Using Hash facade here is standard.
-
-        if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
-            throw new Exception("Invalid credentials");
-        }
+        \Illuminate\Support\Facades\RateLimiter::clear($key);
 
         return $this->generateTokens($user);
     }
